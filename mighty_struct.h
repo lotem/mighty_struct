@@ -79,7 +79,7 @@ struct Array {
 };
 
 template <class T>
-struct List {
+struct Vector {
   Size size;
   OffsetPtr<T> at;
   T* begin() { return &at[0]; }
@@ -130,7 +130,7 @@ struct Struct {
   Array<T>* CreateArray(size_t size);
 
   template <class T>
-  List<T> CreateList(size_t size);
+  Vector<T> CreateVector(size_t size);
 
   String CreateString(const std::string &str);
   WString CreateWString(const std::wstring &str);
@@ -203,7 +203,7 @@ T* Struct::Create(size_t count) {
   T* t = Allocate<T>(count);
   if (t) {
     for (size_t i = 0; i < count; ++i)
-      t[i]->template Init<T>();
+      t[i].template Init<T>();
   }
   return t;
 }
@@ -219,12 +219,12 @@ Array<T>* Struct::CreateArray(size_t size) {
 }
 
 template <class T>
-List<T> Struct::CreateList(size_t size) {
-  List<T> list;
-  list.at = Allocate<T>(size);
-  if (list.at)
-    list.size = size;
-  return list;
+Vector<T> Struct::CreateVector(size_t size) {
+  Vector<T> vec;
+  vec.at = Allocate<T>(size);
+  if (vec.at)
+    vec.size = size;
+  return vec;
 }
 
 inline String Struct::CreateString(const std::string &str) {

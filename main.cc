@@ -40,7 +40,7 @@ void test_point() {
 struct Student : Struct {
   String name;
   int age;
-  List<String> courses;
+  Vector<String> courses;
   // extensible structure should be intergrated by pointer
   OffsetPtr<Point> position;
 
@@ -68,7 +68,7 @@ void test_student() {
   Student *s = Struct::New<Student>(512);
   s->name = s->CreateString("Fred");
   s->age = 20;
-  s->courses = s->CreateList<String>(3);
+  s->courses = s->CreateVector<String>(3);
   s->courses.at[0] = s->CreateString("chinese");
   s->courses.at[1] = s->CreateString("english");
   s->courses.at[2] = s->CreateString("math");
