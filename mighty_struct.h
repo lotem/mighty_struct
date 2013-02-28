@@ -33,6 +33,9 @@ class OffsetPtr {
   operator bool() const {
     return !!offset_;
   }
+  T* operator-> () const {
+    return get();
+  }
   T& operator* () const {
     return *get();
   }
@@ -97,9 +100,9 @@ struct Struct {
     struct_size = used_space = sizeof(S);
     this->capacity = capacity;
   }
-  
+
   template <class T>
-  bool HasMember(const T& member) {
+  bool HasMember(const T& member) const {
     return struct_size > (char*)&member - (char*)this;
   }
 
@@ -113,19 +116,22 @@ struct Struct {
   static S* Copy(S* dest, S* src);
   template <class S>
   static void Delete(S* ptr);
-  
+
   template <class T>
   T* Allocate(size_t count = 1);
 
   template <class T>
-  T* Find(size_t offset);
+  T* Find(size_t offset) const;
+
+  template <class T>
+  T* Create(size_t count = 1);
 
   template <class T>
   Array<T>* CreateArray(size_t size);
-  
+
   template <class T>
   List<T> CreateList(size_t size);
-  
+
   String CreateString(const std::string &str);
   WString CreateWString(const std::wstring &str);
 };
@@ -142,7 +148,7 @@ S* Struct::InplaceNew(void* buffer, Size capacity) {
   S* s = (S*)buffer;
   s->template Init<S>(capacity);
   return s;
-}  
+}
 
 template <class S>
 S* Struct::NewCopy(S* src) {
@@ -171,6 +177,8 @@ void Struct::Delete(S* ptr) {
 
 template <class T>
 T* Struct::Allocate(size_t count) {
+  if (!count)
+    return NULL;
   size_t available_space = capacity - used_space;
   size_t required_space = sizeof(T) * count;
   if (required_space > available_space) {
@@ -184,10 +192,20 @@ T* Struct::Allocate(size_t count) {
 }
 
 template <class T>
-T* Struct::Find(size_t offset) {
+T* Struct::Find(size_t offset) const {
   if (offset + sizeof(T) > capacity)
     return NULL;
   return reinterpret_cast<T*>(address() + offset);
+}
+
+template <class T>
+T* Struct::Create(size_t count) {
+  T* t = Allocate<T>(count);
+  if (t) {
+    for (size_t i = 0; i < count; ++i)
+      t[i]->template Init<T>();
+  }
+  return t;
 }
 
 template <class T>

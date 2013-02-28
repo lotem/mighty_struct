@@ -10,23 +10,30 @@ struct Point2D : Struct {
 
 struct Point3D : Point2D {
   int z;
+
+  void Print() const;
 };
+
+void Point3D::Print() const {
+  cout << x << ", " << y;
+  if (HasMember( z )) {
+    cout << ", " << z;
+  }
+}
 
 // current version
 typedef Point3D Point;
 
 void test_point() {
   Point2D here;
-  here.Init<Point2D>(); 
+  here.Init<Point2D>();
   here.x = 1;
   here.y = 2;
 
   // using it elsewhere
   Point* p = (Point*)(&here);
-  cout << "there: " << p->x << ", " << p->y;
-  if (p->HasMember( p->z )) {
-    cout << ", " << p->z;
-  }
+  cout << "there: ";
+  p->Print();
   cout << endl;
 }
 
@@ -34,6 +41,8 @@ struct Student : Struct {
   String name;
   int age;
   List<String> courses;
+  // extensible structure should be intergrated by pointer
+  OffsetPtr<Point> position;
 
   void Print() const;
 };
@@ -48,6 +57,11 @@ void Student::Print() const {
     cout << ' ' << courses.at[i].c_str();
   }
   cout << endl;
+  if (position) {
+    cout << "position: ";
+    position->Print();
+    cout << endl;
+  }
 }
 
 void test_student() {
@@ -58,6 +72,12 @@ void test_student() {
   s->courses.at[0] = s->CreateString("chinese");
   s->courses.at[1] = s->CreateString("english");
   s->courses.at[2] = s->CreateString("math");
+  // creating a nested struct
+  s->position = s->Create<Point>();
+  s->position->x = 3;
+  s->position->y = 2;
+  s->position->z = 1;
+  // done
   cout << "# s" << endl;
   s->Print();
 
