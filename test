@@ -1,0 +1,2 @@
+mkdir -p bin
+clang sample.cc -lstdc++ -o bin/sample && bin/sample
