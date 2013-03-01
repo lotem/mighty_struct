@@ -87,15 +87,23 @@ struct WString {
   void clear() { data = NULL; }
 };
 
-template <class T>
+template <class T, Size N>
 struct Array {
-  Size size;
-  T at[1];
-  bool empty() const { return size == 0; }
+  T at[N];
+  T& operator[] (Size index) {
+    if (index >= N) throw std::out_of_range("Array index out of range");
+    return at[index];
+  }
+  const T& operator[] (Size index) const {
+    if (index >= N) throw std::out_of_range("Array index out of range");
+    return at[index];
+  }
+  bool empty() const { return N == 0; }
+  Size size() const { return N; }
   T* begin() { return &at[0]; }
-  T* end() { return &at[0] + size; }
+  T* end() { return &at[0] + N; }
   const T* begin() const { return &at[0]; }
-  const T* end() const { return &at[0] + size; }
+  const T* end() const { return &at[0] + N; }
 };
 
 template <class T>
@@ -103,52 +111,67 @@ struct Vector {
   typedef T value_type;
   typedef value_type* iterator;
   typedef const value_type* const_iterator;
-  typedef Array<value_type> content_type;
+  // objects of content_type can be created outside the Struct's memory block
+  typedef struct {
+    Size size;
+    T* at;
+  } content_type;
 
-  OffsetPtr<content_type> arr;
+  Size size_;
+  OffsetPtr<value_type> at;
 
-  Vector<T>& operator= (content_type* a) { arr = a; return *this; }
+  Vector<T>& operator= (const content_type& a) { size_ = a.size; at = a.at; return *this; }
   T& operator[] (Size index) {
-    if (index >= size()) throw std::out_of_range("Vector index out of range");
-    return arr->at[index];
+    if (index >= size_) throw std::out_of_range("Vector index out of range");
+    return at[index];
   }
   const T& operator[] (Size index) const {
-    if (index >= size()) throw std::out_of_range("Vector index out of range");
-    return arr->at[index];
+    if (index >= size_) throw std::out_of_range("Vector index out of range");
+    return at[index];
   }
   bool operator== (const Vector<T>& o) const {
-    if (size() != o.size())
+    if (size_ != o.size_)
       return false;
     if (!empty() && !o.empty()) {
-      for (iterator i = begin(), j = o.begin(); i != end(); ++i, ++j) {
+      for (const_iterator i = begin(), j = o.begin(); i != end(); ++i, ++j) {
         if (*i != *j)
           return false;
       }
     }
     return true;
   }
-  void clear() { arr = NULL; }
-  Size size() const { return arr ? arr->size : 0; }
-  bool empty() const { return !arr || arr->empty(); }
-  iterator begin() { return arr->begin(); }
-  iterator end() { return arr->end(); }
-  const_iterator begin() const { return arr->begin(); }
-  const_iterator end() const { return arr->end(); }
+  bool operator!= (const Vector<T>& o) const { return !(*this == o); }
+  void clear() { size_ = 0; at = NULL; }
+  bool empty() const { return !size_; }
+  Size size() const { return size_; }
+  iterator begin() { return &at[0]; }
+  iterator end() { return &at[0] + size_; }
+  const_iterator begin() const { return &at[0]; }
+  const_iterator end() const { return &at[0] + size_; }
+};
+
+template <class A, class B>
+struct Pair {
+  A first;
+  B second;
 };
 
 template <class K, class V>
-struct Map {
-  typedef struct {
-    K first;
-    V second;
-  } value_type;
+struct Map : Vector<Pair<K, V> > {
+  typedef Vector<Pair<K, V> > base_type;
+  typedef typename base_type::value_type value_type;
   typedef value_type* iterator;
   typedef const value_type* const_iterator;
-  typedef Array<value_type> content_type;
+  typedef typename base_type::content_type content_type;
+  using base_type::operator=;
+  using base_type::operator==;
+  using base_type::operator!=;
+  using base_type::clear;
+  using base_type::empty;
+  using base_type::size;
+  using base_type::begin;
+  using base_type::end;
 
-  OffsetPtr<content_type> arr;
-
-  Map<K, V>& operator= (content_type* a) { arr = a; return *this; }
   V& operator[] (const K& key) {
     iterator it = find(key);
     if (it == end()) throw std::out_of_range("nonexistent key in Map");
@@ -169,13 +192,6 @@ struct Map {
     while (it != end() && it->first != key) ++it;
     return it;
   }
-  void clear() { arr = NULL; }
-  Size size() const { return arr ? arr->size : 0; }
-  bool empty() const { return !arr || arr->empty(); }
-  iterator begin() { return arr->begin(); }
-  iterator end() { return arr->end(); }
-  const_iterator begin() const { return arr->begin(); }
-  const_iterator end() const { return arr->end(); }
 };
 
 struct Struct {
@@ -216,11 +232,14 @@ struct Struct {
   template <class T>
   T* Create(size_t count = 1);
 
+  template <class T, Size N>
+  Array<T, N>* CreateArray();
+
   template <class T>
-  Array<T>* CreateArray(size_t size);
+  const typename Vector<T>::content_type CreateVector(size_t size);
 
   template <class K, class V>
-  typename Map<K, V>::content_type* CreateMap(size_t size);
+  const typename Map<K, V>::content_type CreateMap(size_t size);
 
   const char* CreateString(const std::string &str);
   const wchar_t* CreateWString(const std::wstring &str);
@@ -290,27 +309,35 @@ T* Struct::Find(size_t offset) const {
 
 template <class T>
 T* Struct::Create(size_t count) {
-  T* t = Allocate<T>(count);
-  if (t) {
+  T* a = Allocate<T>(count);
+  if (a) {
     for (size_t i = 0; i < count; ++i)
-      t[i].template Init<T>();
+      a[i].template Init<T>();
   }
-  return t;
+  return a;
+}
+
+template <class T, Size N>
+Array<T, N>* Struct::CreateArray() {
+  Array<T, N>* a = Allocate<Array<T, N> >();
+  if (a) {
+    for (size_t i = 0; i < a->size(); ++i)
+      a->at[i].template Init<T>();
+  }
+  return a;
 }
 
 template <class T>
-Array<T>* Struct::CreateArray(size_t size) {
-  size_t num_bytes = sizeof(Array<T>) + sizeof(T) * (size - 1);
-  Array<T>* ret = reinterpret_cast<Array<T>*>(Allocate<char>(num_bytes));
-  if (!ret)
-    return NULL;
-  ret->size = size;
-  return ret;
+const typename Vector<T>::content_type Struct::CreateVector(size_t size) {
+  typename Vector<T>::content_type x;
+  x.size = size;
+  x.at = Allocate<T>(size);
+  return x;
 }
 
 template <class K, class V>
-typename Map<K, V>::content_type* Struct::CreateMap(size_t size) {
-  return CreateArray<typename Map<K, V>::value_type>(size);
+const typename Map<K, V>::content_type Struct::CreateMap(size_t size) {
+  return CreateVector<typename Map<K, V>::value_type>(size);
 }
 
 inline const char* Struct::CreateString(const std::string &str) {
