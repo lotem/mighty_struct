@@ -43,7 +43,7 @@ class OffsetPtr {
   T& operator[] (size_t index) const {
     return *(get() + index);
   }
-  // TODO: define other operations
+  operator T* () const { return get(); }
   T* get() const {
     if (!offset_) return NULL;
     return reinterpret_cast<T*>((char*)&offset_ + offset_);
@@ -61,9 +61,9 @@ struct String {
   bool operator== (const char* s) const {
     return data.get() == s || (data && s && !strcmp(data.get(), s));
   }
-  bool operator== (const String& o) const { return *this == o.data.get(); }
+  bool operator== (const String& o) const { return *this == o.data; }
   bool operator!= (const char* s) const { return !(*this == s); }
-  bool operator!= (const String& o) const { return !(*this == o.data.get()); }
+  bool operator!= (const String& o) const { return !(*this == o.data); }
   const char* c_str() const { return data.get(); }
   Size length() const { return c_str() ? strlen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
@@ -75,9 +75,9 @@ struct WString {
   bool operator== (const wchar_t* s) const {
     return data.get() == s || (data && s && !wcscmp(data.get(), s));
   }
-  bool operator== (const WString& o) const { return *this == o.data.get(); }
+  bool operator== (const WString& o) const { return *this == o.data; }
   bool operator!= (const wchar_t* s) const { return !(*this == s); }
-  bool operator!= (const WString& o) const { return !(*this == o.data.get()); }
+  bool operator!= (const WString& o) const { return !(*this == o.data); }
   const wchar_t* c_str() const { return data.get(); }
   Size length() const { return c_str() ? wcslen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
