@@ -64,9 +64,11 @@ struct String {
   bool operator== (const String& o) const { return *this == o.data; }
   bool operator!= (const char* s) const { return !(*this == s); }
   bool operator!= (const String& o) const { return !(*this == o.data); }
+  operator std::string () const { return std::string(c_str()); }
   const char* c_str() const { return data.get(); }
   Size length() const { return c_str() ? strlen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
+  void clear() { data = NULL; }
 };
 
 struct WString {
@@ -78,9 +80,11 @@ struct WString {
   bool operator== (const WString& o) const { return *this == o.data; }
   bool operator!= (const wchar_t* s) const { return !(*this == s); }
   bool operator!= (const WString& o) const { return !(*this == o.data); }
+  operator std::wstring () const { return std::wstring(c_str()); }
   const wchar_t* c_str() const { return data.get(); }
   Size length() const { return c_str() ? wcslen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
+  void clear() { data = NULL; }
 };
 
 template <class T>
@@ -112,6 +116,18 @@ struct Vector {
     if (index >= size()) throw std::out_of_range("Vector index out of range");
     return arr->at[index];
   }
+  bool operator== (const Vector<T>& o) const {
+    if (size() != o.size())
+      return false;
+    if (!empty() && !o.empty()) {
+      for (iterator i = begin(), j = o.begin(); i != end(); ++i, ++j) {
+        if (*i != *j)
+          return false;
+      }
+    }
+    return true;
+  }
+  void clear() { arr = NULL; }
   Size size() const { return arr ? arr->size : 0; }
   bool empty() const { return !arr || arr->empty(); }
   iterator begin() { return arr->begin(); }
@@ -153,6 +169,7 @@ struct Map {
     while (it != end() && it->first != key) ++it;
     return it;
   }
+  void clear() { arr = NULL; }
   Size size() const { return arr ? arr->size : 0; }
   bool empty() const { return !arr || arr->empty(); }
   iterator begin() { return arr->begin(); }
