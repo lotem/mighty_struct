@@ -6,6 +6,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <stdexcept>
 #include <string>
 #include <stdint.h>
 
@@ -57,6 +58,12 @@ class OffsetPtr {
 struct String {
   OffsetPtr<char> data;
   String& operator= (const char* str) { data = str; return *this; }
+  bool operator== (const char* s) const {
+    return data.get() == s || (data && s && !strcmp(data.get(), s));
+  }
+  bool operator== (const String& o) const { return *this == o.data.get(); }
+  bool operator!= (const char* s) const { return !(*this == s); }
+  bool operator!= (const String& o) const { return !(*this == o.data.get()); }
   const char* c_str() const { return data.get(); }
   Size length() const { return c_str() ? strlen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
@@ -65,6 +72,12 @@ struct String {
 struct WString {
   OffsetPtr<wchar_t> data;
   WString& operator= (const wchar_t* str) { data = str; return *this; }
+  bool operator== (const wchar_t* s) const {
+    return data.get() == s || (data && s && !wcscmp(data.get(), s));
+  }
+  bool operator== (const WString& o) const { return *this == o.data.get(); }
+  bool operator!= (const wchar_t* s) const { return !(*this == s); }
+  bool operator!= (const WString& o) const { return !(*this == o.data.get()); }
   const wchar_t* c_str() const { return data.get(); }
   Size length() const { return c_str() ? wcslen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
@@ -85,14 +98,61 @@ template <class T>
 struct Vector {
   OffsetPtr<Array <T> > arr;
   Vector<T>& operator= (Array<T>* a) { arr = a; return *this; }
-  T& operator[] (int index) { return arr->at[index]; }
-  const T& operator[] (int index) const { return arr->at[index]; }
+  T& operator[] (Size index) {
+    if (index >= size()) throw std::out_of_range("Vector index out of range");
+    return arr->at[index];
+  }
+  const T& operator[] (Size index) const {
+    if (index >= size()) throw std::out_of_range("Vector index out of range");
+    return arr->at[index];
+  }
   Size size() const { return arr ? arr->size : 0; }
   bool empty() const { return !arr || arr->empty(); }
   T* begin() { return arr->begin(); }
   T* end() { return arr->end(); }
   const T* begin() const { return arr->begin(); }
   const T* end() const { return arr->end(); }
+};
+
+template <class K, class V>
+struct Map {
+  typedef struct {
+    K first;
+    V second;
+  } value_type;
+  OffsetPtr<Array<value_type> > arr;
+  typedef value_type* iterator;
+  typedef const value_type* const_iterator;
+  Vector<value_type>& operator= (Array<value_type>* a) {
+    arr = a;
+    return *this;
+  }
+  V& operator[] (const K& key) {
+    iterator it = find(key);
+    if (it == end()) throw std::out_of_range("nonexistent key in Map");
+    return *it;
+  }
+  const V& operator[] (const K& key) const {
+    const_iterator it = find(key);
+    if (it == end()) throw std::out_of_range("nonexistent key in Map");
+    return *it;
+  }
+  iterator find(const K& key) {
+    iterator it = begin();
+    while (it != end() && it->first != key) ++it;
+    return it;
+  }
+  const_iterator find(const K& key) const {
+    const_iterator it = begin();
+    while (it != end() && it->first != key) ++it;
+    return it;
+  }
+  Size size() const { return arr ? arr->size : 0; }
+  bool empty() const { return !arr || arr->empty(); }
+  iterator begin() { return arr->begin(); }
+  iterator end() { return arr->end(); }
+  const_iterator begin() const { return arr->begin(); }
+  const_iterator end() const { return arr->end(); }
 };
 
 struct Struct {

@@ -43,6 +43,8 @@ struct Student : Struct {
   Vector<String> courses;
   // extensible structure should be intergrated by pointer
   OffsetPtr<Point> position;
+  // so that Student can be extended further more
+  Map<String, int> scores;
 
   void Print() const;
 };
@@ -55,6 +57,12 @@ void Student::Print() const {
   cout << "courses:";
   for (size_t i = 0; i < courses.size(); ++i) {
     cout << ' ' << courses[i].c_str();
+    if (HasMember(scores) && !scores.empty()) {
+      Map<String, int>::const_iterator score = scores.find(courses[i]);
+      if (score != scores.end()) {
+        cout << '(' << score->second << ')';
+      }
+    }
   }
   cout << endl;
   if (position) {
