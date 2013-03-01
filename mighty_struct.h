@@ -218,7 +218,7 @@ S* Struct::New(Size capacity) {
 
 template <class S>
 S* Struct::InplaceNew(void* buffer, Size capacity) {
-  S* s = (S*)buffer;
+  S* s = new (buffer) S;
   s->template Init<S>(capacity);
   return s;
 }
