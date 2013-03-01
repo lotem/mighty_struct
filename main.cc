@@ -85,6 +85,14 @@ void test_student() {
   s->position->x = 3;
   s->position->y = 2;
   s->position->z = 1;
+  s->scores = s->CreateMap<String, int>(s->courses.size());
+  Vector<String>::const_iterator i = s->courses.begin();
+  Map<String, int>::iterator j = s->scores.begin();
+  int score = 90;
+  for (; i != s->courses.end(); ++i, ++j) {
+    j->first = *i;
+    j->second = score++;
+  }
   // done
   cout << "# s" << endl;
   s->Print();
