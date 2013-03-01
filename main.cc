@@ -53,8 +53,8 @@ void Student::Print() const {
   cout << "name: " << name.c_str() << endl;
   cout << "age: " << age << endl;
   cout << "courses:";
-  for (size_t i = 0; i < courses.size; ++i) {
-    cout << ' ' << courses.at[i].c_str();
+  for (size_t i = 0; i < courses.size(); ++i) {
+    cout << ' ' << courses[i].c_str();
   }
   cout << endl;
   if (position) {
@@ -68,10 +68,10 @@ void test_student() {
   Student *s = Struct::New<Student>(512);
   s->name = s->CreateString("Fred");
   s->age = 20;
-  s->courses = s->CreateVector<String>(3);
-  s->courses.at[0] = s->CreateString("chinese");
-  s->courses.at[1] = s->CreateString("english");
-  s->courses.at[2] = s->CreateString("math");
+  s->courses = s->CreateArray<String>(3);
+  s->courses[0] = s->CreateString("chinese");
+  s->courses[1] = s->CreateString("english");
+  s->courses[2] = s->CreateString("math");
   // creating a nested struct
   s->position = s->Create<Point>();
   s->position->x = 3;

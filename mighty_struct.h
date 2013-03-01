@@ -7,13 +7,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
-//#include <stdint.h>
+#include <stdint.h>
 
-typedef size_t Size;
+typedef /*size_t*/uint16_t Size;
 
 // Limitation: cannot point to itself
 // (zero is used to represent NULL pointer)
-template <class T = char, class Offset = intptr_t>
+template <class T = char, class Offset = /*intptr_t*/int16_t>
 class OffsetPtr {
  public:
   OffsetPtr() : offset_(0) {}
@@ -56,6 +56,7 @@ class OffsetPtr {
 
 struct String {
   OffsetPtr<char> data;
+  String& operator= (const char* str) { data = str; return *this; }
   const char* c_str() const { return data.get(); }
   Size length() const { return c_str() ? strlen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
@@ -63,6 +64,7 @@ struct String {
 
 struct WString {
   OffsetPtr<wchar_t> data;
+  WString& operator= (const wchar_t* str) { data = str; return *this; }
   const wchar_t* c_str() const { return data.get(); }
   Size length() const { return c_str() ? wcslen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
@@ -72,6 +74,7 @@ template <class T>
 struct Array {
   Size size;
   T at[1];
+  bool empty() const { return size == 0; }
   T* begin() { return &at[0]; }
   T* end() { return &at[0] + size; }
   const T* begin() const { return &at[0]; }
@@ -80,12 +83,16 @@ struct Array {
 
 template <class T>
 struct Vector {
-  Size size;
-  OffsetPtr<T> at;
-  T* begin() { return &at[0]; }
-  T* end() { return &at[0] + size; }
-  const T* begin() const { return &at[0]; }
-  const T* end() const { return &at[0] + size; }
+  OffsetPtr<Array <T> > arr;
+  Vector<T>& operator= (Array<T>* a) { arr = a; return *this; }
+  T& operator[] (int index) { return arr->at[index]; }
+  const T& operator[] (int index) const { return arr->at[index]; }
+  Size size() const { return arr ? arr->size : 0; }
+  bool empty() const { return !arr || arr->empty(); }
+  T* begin() { return arr->begin(); }
+  T* end() { return arr->end(); }
+  const T* begin() const { return arr->begin(); }
+  const T* end() const { return arr->end(); }
 };
 
 struct Struct {
@@ -129,11 +136,8 @@ struct Struct {
   template <class T>
   Array<T>* CreateArray(size_t size);
 
-  template <class T>
-  Vector<T> CreateVector(size_t size);
-
-  String CreateString(const std::string &str);
-  WString CreateWString(const std::wstring &str);
+  const char* CreateString(const std::string &str);
+  const wchar_t* CreateWString(const std::wstring &str);
 };
 
 // function definitions
@@ -218,33 +222,20 @@ Array<T>* Struct::CreateArray(size_t size) {
   return ret;
 }
 
-template <class T>
-Vector<T> Struct::CreateVector(size_t size) {
-  Vector<T> vec;
-  vec.at = Allocate<T>(size);
-  if (vec.at)
-    vec.size = size;
-  return vec;
-}
-
-inline String Struct::CreateString(const std::string &str) {
-  String ret;
+inline const char* Struct::CreateString(const std::string &str) {
   size_t size = str.length() + 1;
   char* p = Allocate<char>(size);
   if (p)
     strncpy(p, str.c_str(), size);
-  ret.data = p;
-  return ret;
+  return p;
 }
 
-inline WString Struct::CreateWString(const std::wstring &str) {
-  WString ret;
+inline const wchar_t* Struct::CreateWString(const std::wstring &str) {
   size_t size = str.length() + 1;
   wchar_t* p = Allocate<wchar_t>(size);
   if (p)
     wcsncpy(p, str.c_str(), size);
-  ret.data = p;
-  return ret;
+  return p;
 }
 
 #endif  // MIGHTY_STRUCT_H_
