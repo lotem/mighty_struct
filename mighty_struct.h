@@ -134,7 +134,7 @@ struct Vector {
       return false;
     if (!empty() && !o.empty()) {
       for (const_iterator i = begin(), j = o.begin(); i != end(); ++i, ++j) {
-        if (*i != *j)
+        if (!(*i == *j))
           return false;
       }
     }
@@ -184,12 +184,12 @@ struct Map : Vector<Pair<K, V> > {
   }
   iterator find(const K& key) {
     iterator it = begin();
-    while (it != end() && it->first != key) ++it;
+    while (it != end() && !(it->first == key)) ++it;
     return it;
   }
   const_iterator find(const K& key) const {
     const_iterator it = begin();
-    while (it != end() && it->first != key) ++it;
+    while (it != end() && !(it->first == key)) ++it;
     return it;
   }
 };
