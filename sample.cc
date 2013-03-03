@@ -46,6 +46,10 @@ struct Student : Struct {
   // so that Student can be extended further more
   Map<String, int> scores;
 
+  // use Vector<> for fixed length types such as int, String
+  // use List<> for variable length (extensible) Structs
+  List<Student> classmates;
+
   void Print() const;
 };
 
@@ -54,9 +58,10 @@ void Student::Print() const {
   cout << "[used_space]: " << used_space << endl;
   cout << "name: " << name.c_str() << endl;
   cout << "age: " << age << endl;
-  cout << "courses:";
+  cout << "courses: ";
   for (size_t i = 0; i < courses.size(); ++i) {
-    cout << ' ' << courses[i].c_str();
+    if (i != 0) cout << ", ";
+    cout << courses[i].c_str();
     if (HasMember(scores) && !scores.empty()) {
       Map<String, int>::const_iterator score = scores.find(courses[i]);
       if (score != scores.end()) {
@@ -70,21 +75,31 @@ void Student::Print() const {
     position->Print();
     cout << endl;
   }
+  if (HasMember(classmates) && !classmates.empty()) {
+    cout << "classmates: ";
+    for (List<Student>::const_iterator i = classmates.begin(); i != classmates.end(); ++i) {
+      if (i != classmates.begin()) cout << ", ";
+      cout << i->name.c_str();
+    }
+    cout << endl;
+  }
 }
 
 void test_student() {
   Student *s = Struct::New<Student>(512);
   s->name = s->CreateString("Fred");
   s->age = 20;
+  // create a Vector
   s->courses = s->CreateVector<String>(3);
   s->courses[0] = s->CreateString("chinese");
   s->courses[1] = s->CreateString("english");
   s->courses[2] = s->CreateString("math");
-  // creating a nested struct
+  // create a nested Struct
   s->position = s->Create<Point>();
   s->position->x = 3;
   s->position->y = 2;
   s->position->z = 1;
+  // create a Map
   s->scores = s->CreateMap<String, int>(s->courses.size());
   Vector<String>::const_iterator i = s->courses.begin();
   Map<String, int>::iterator j = s->scores.begin();
@@ -93,6 +108,13 @@ void test_student() {
     j->first = *i;
     j->second = score++;
   }
+  // create a linked List of Student
+  s->classmates = s->CreateList<Student>(2);
+  s->classmates[0].name = s->CreateString("Li Lei");
+  s->classmates[1].name = s->CreateString("Han Meimei");
+  Student* new_classmate = s->Create<Student>();
+  new_classmate->name = s->CreateString("Jim Green");
+  s->classmates.append(s, new_classmate);
   // done
   cout << "# s" << endl;
   s->Print();
@@ -101,7 +123,7 @@ void test_student() {
   cout << "# t" << endl;
   t->Print();
 
-  char buffer[200];
+  char buffer[1000];
   Student *r = Struct::InplaceNew<Student>(buffer, sizeof(buffer));
   Struct::Copy(r, s);
   cout << "# r" << endl;

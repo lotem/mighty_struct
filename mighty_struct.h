@@ -87,6 +87,8 @@ struct WString {
   void clear() { data = NULL; }
 };
 
+struct Struct;
+
 template <class T, Size N>
 struct Array {
   T at[N];
@@ -107,6 +109,97 @@ struct Array {
 };
 
 template <class T>
+struct List {
+  typedef T value_type;
+  template <class U>
+  struct iterator_type {
+    const List<U>* ptr;
+    iterator_type() : ptr(0) {}
+    iterator_type(const List<U>* p) : ptr(p) {}
+    iterator_type<U>& operator++ () {
+      if (ptr && ptr->next)
+        ptr = ptr->next;
+      else
+        ptr = 0;
+      return *this;
+    }
+    iterator_type<U> operator++ (int) {
+      iterator_type<U> copy(*this);
+      ++(*this);
+      return copy;
+    }
+    U* operator-> () const {
+      return ptr->value.get();
+    }
+    U& operator* () const {
+      return *ptr->value;
+    }
+    bool operator== (const iterator_type<U>& o) const {
+      return ptr == o.ptr;
+    }
+    bool operator!= (const iterator_type<U>& o) const {
+      return !(*this == o);
+    }
+  };
+  typedef iterator_type<T> iterator;
+  typedef iterator_type<const T> const_iterator;
+  // objects of content_type can be created outside the Struct's memory block
+  typedef struct {
+    Size size;
+    T* value;
+    List<T>* next;
+  } content_type;
+
+  Size size_;
+  OffsetPtr<T> value;
+  OffsetPtr<List<T> > next;
+
+  List<T>& operator= (const content_type& a) {
+    size_ = a.size;
+    value = a.value;
+    next = a.next;
+    return *this;
+  }
+  T& operator[] (Size index) {
+    if (index >= size_) throw std::out_of_range("List index out of range");
+    if (index == 0)
+      return *value;
+    else
+      return (*next)[index - 1];
+  }
+  const T& operator[] (Size index) const {
+    if (index >= size_) throw std::out_of_range("List index out of range");
+    if (index == 0)
+      return *value;
+    else
+      return (*next)[index - 1];
+  }
+  bool operator== (const List<T>& o) const {
+    if (size_ != o.size_)
+      return false;
+    if (!empty() && !o.empty()) {
+      for (const_iterator i = begin(), j = o.begin(); i != end(); ++i, ++j) {
+        if (!(*i == *j))
+          return false;
+      }
+    }
+    return true;
+  }
+  bool operator!= (const List<T>& o) const { return !(*this == o); }
+  void clear() { size_ = 0; value = NULL; next = NULL; }
+  bool empty() const { return !size_; }
+  Size size() const { return size_; }
+  iterator begin() { return empty() ? iterator() : iterator(this); }
+  iterator end() { return iterator(); }
+  const_iterator begin() const {
+    return empty() ? const_iterator() : const_iterator((List<const T>*)this);
+  }
+  const_iterator end() const { return const_iterator(); }
+  template <class V>
+  bool append(Struct* allocator, V* v);
+};
+
+template <class T>
 struct Vector {
   typedef T value_type;
   typedef value_type* iterator;
@@ -120,7 +213,11 @@ struct Vector {
   Size size_;
   OffsetPtr<value_type> at;
 
-  Vector<T>& operator= (const content_type& a) { size_ = a.size; at = a.at; return *this; }
+  Vector<T>& operator= (const content_type& a) {
+    size_ = a.size;
+    at = a.at;
+    return *this;
+  }
   T& operator[] (Size index) {
     if (index >= size_) throw std::out_of_range("Vector index out of range");
     return at[index];
@@ -236,6 +333,9 @@ struct Struct {
   Array<T, N>* CreateArray();
 
   template <class T>
+  const typename List<T>::content_type CreateList(size_t size);
+
+  template <class T>
   const typename Vector<T>::content_type CreateVector(size_t size);
 
   template <class K, class V>
@@ -246,6 +346,26 @@ struct Struct {
 };
 
 // function definitions
+
+template <class T>
+template <class V>
+bool List<T>::append(Struct* s, V* v) {
+  if (!v) return false;
+  if (empty()) {
+    value = v;
+    ++size_;
+    return true;
+  }
+  if (!next) {
+    next = s->Allocate<List<T> >();
+    if (!next)
+      return false;
+  }
+  if (!next->append(s, v))
+    return false;
+  size_ = next->size_ + 1;
+  return true;
+}
 
 template <class S>
 S* Struct::New(Size capacity) {
@@ -325,6 +445,22 @@ Array<T, N>* Struct::CreateArray() {
       a->at[i].template Init<T>();
   }
   return a;
+}
+
+template <class T>
+const typename List<T>::content_type Struct::CreateList(size_t size) {
+  typename List<T>::content_type x;
+  x.size = size;
+  x.value = NULL;
+  x.next = NULL;
+  if (size > 0) {
+    x.value = Allocate<T>();
+  }
+  if (size > 1) {
+    x.next = Allocate<List<T> >();
+    *x.next = CreateList<T>(size - 1);
+  }
+  return x;
 }
 
 template <class T>
