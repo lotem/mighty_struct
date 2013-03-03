@@ -320,9 +320,9 @@ struct Struct {
   template <class S>
   static S* InplaceNew(void* buffer, Size capacity);
   template <class S>
-  static S* NewCopy(S* src);
+  static S* NewCopy(const S* src);
   template <class S>
-  static S* Copy(S* dest, S* src);
+  static S* Copy(S* dest, const S* src);
   template <class S>
   static void Delete(S* ptr);
 
@@ -416,7 +416,7 @@ S* Struct::InplaceNew(void* buffer, Size capacity) {
 }
 
 template <class S>
-S* Struct::NewCopy(S* src) {
+S* Struct::NewCopy(const S* src) {
   if (!src) return NULL;
   S* ret = New<S>(src->used_space);
   if (ret) {
@@ -426,7 +426,7 @@ S* Struct::NewCopy(S* src) {
 }
 
 template <class S>
-S* Struct::Copy(S* dest, S* src) {
+S* Struct::Copy(S* dest, const S* src) {
   if (!dest || !src || dest->capacity < src->used_space)
     return NULL;
   size_t original_capacity = dest->capacity;
