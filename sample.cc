@@ -2,6 +2,7 @@
 #include "mighty_struct.h"
 
 using namespace std;
+using namespace mighty;
 
 struct Point2D : Struct {
   int x;
@@ -126,6 +127,8 @@ void test_student() {
   char buffer[1000];
   Student *r = Struct::InplaceNew<Student>(buffer, sizeof(buffer));
   Struct::Copy(r, s);
+  r->classmates.resize(r, 2);
+  r->name = r->CreateString(std::string("Lonely ") + r->name.c_str());
   cout << "# r" << endl;
   r->Print();
 

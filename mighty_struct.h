@@ -10,6 +10,8 @@
 #include <string>
 #include <stdint.h>
 
+namespace mighty {
+
 typedef /*size_t*/uint16_t Size;
 
 // Limitation: cannot point to itself
@@ -199,6 +201,8 @@ struct List {
   const_iterator end() const { return const_iterator(); }
   template <class V>
   bool append(Struct* allocator, V* v);
+  bool append(Struct* allocator, const content_type& c);
+  bool resize(Struct* allocator, size_t new_size);
 };
 
 template <class T>
@@ -353,9 +357,17 @@ template <class T>
 template <class V>
 bool List<T>::append(Struct* s, V* v) {
   if (!v) return false;
+  content_type c;
+  c.size = 1;
+  c.value = v;
+  c.next = NULL;
+  return append(s, c);
+}
+
+template <class T>
+bool List<T>::append(Struct* s, const content_type& c) {
   if (empty()) {
-    value = v;
-    ++size_;
+    *this = c;
     return true;
   }
   if (!next) {
@@ -363,9 +375,31 @@ bool List<T>::append(Struct* s, V* v) {
     if (!next)
       return false;
   }
-  if (!next->append(s, v))
+  if (!next->append(s, c))
     return false;
   size_ = next->size_ + 1;
+  return true;
+}
+
+template <class T>
+bool List<T>::resize(Struct* s, size_t new_size) {
+  if (new_size == size_)
+    return true;
+  if (new_size > size_) {
+    return append(s, s->CreateList<T>(new_size - size_));
+  }
+  if (new_size == 0) {
+    clear();
+    return true;
+  }
+  if (new_size == 1) {
+    next = NULL;
+  }
+  else {
+    if (!next->resize(s, new_size - 1))
+      return false;
+  }
+  size_ = new_size;
   return true;
 }
 
@@ -493,5 +527,7 @@ inline const wchar_t* Struct::CreateWString(const std::wstring &str) {
     wcsncpy(p, str.c_str(), size);
   return p;
 }
+
+}  // namspece mighty
 
 #endif  // MIGHTY_STRUCT_H_
