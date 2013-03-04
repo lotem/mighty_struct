@@ -301,6 +301,11 @@ struct Map : Vector<Pair<K, V> > {
   }
 };
 
+template <size_t N>
+struct FreeSpace {
+  char space[N];
+};
+
 struct Struct {
   Size struct_size;
   Size capacity;
@@ -312,6 +317,11 @@ struct Struct {
   void Init(size_t capacity = sizeof(S)) {
     struct_size = used_space = sizeof(S);
     this->capacity = capacity;
+  }
+
+  template <class S>
+  S* Copy(const S* src) {
+    return Copy(static_cast<S*>(this), src);
   }
 
   template <class T>

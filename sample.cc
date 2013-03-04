@@ -7,10 +7,18 @@ using namespace mighty;
 struct Point2D : Struct {
   int x;
   int y;
+
+  Point2D() : x(0), y(0) {
+    Init<Point2D>();
+  }
 };
 
 struct Point3D : Point2D {
   int z;
+
+  Point3D() : z(0) {
+    Init<Point3D>();
+  }
 
   void Print() const;
 };
@@ -27,7 +35,6 @@ typedef Point3D Point;
 
 void test_point() {
   Point2D here;
-  here.Init<Point2D>();
   here.x = 1;
   here.y = 2;
 
@@ -50,6 +57,10 @@ struct Student : Struct {
   // use Vector<> for fixed length types such as int, String
   // use List<> for variable length (extensible) Structs
   List<Student> classmates;
+
+  Student() : age(0) {
+    Init<Student>();
+  }
 
   void Print() const;
 };
@@ -126,11 +137,20 @@ void test_student() {
 
   char buffer[1000];
   Student *r = Struct::InplaceNew<Student>(buffer, sizeof(buffer));
-  Struct::Copy(r, s);
+  r->Copy(s);
   r->classmates.resize(r, 2);
   r->name = r->CreateString(std::string("Lonely ") + r->name.c_str());
   cout << "# r" << endl;
   r->Print();
+
+  struct UltraStudent : Student, FreeSpace<512> {
+    UltraStudent() {
+      Init<UltraStudent>();
+    }
+  } u;
+  u.Copy(s);
+  cout << "# u" << endl;
+  u.Print();
 
   Struct::Delete(t);
   Struct::Delete(s);
