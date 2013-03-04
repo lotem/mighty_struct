@@ -69,8 +69,8 @@ struct String {
   operator std::string () const { return std::string(c_str()); }
   operator const char* () const { return c_str(); }
   const char* c_str() const { return data ? data.get() : ""; }
-  Size length() const { return c_str() ? strlen(c_str()) : 0; }
-  bool empty() const { return !data || !data[0]; }
+  size_t length() const { return data ? strlen(c_str()) : 0; }
+  bool empty() const { return !data || !*data.get(); }
   void clear() { data = NULL; }
 };
 
@@ -86,26 +86,26 @@ struct WString {
   operator std::wstring () const { return std::wstring(c_str()); }
   operator const wchar_t* () const { return c_str(); }
   const wchar_t* c_str() const { return data ? data.get() : L""; }
-  Size length() const { return c_str() ? wcslen(c_str()) : 0; }
-  bool empty() const { return !data || !data[0]; }
+  size_t length() const { return data ? wcslen(c_str()) : 0; }
+  bool empty() const { return !data || !*data.get(); }
   void clear() { data = NULL; }
 };
 
 struct Struct;
 
-template <class T, Size N>
+template <class T, size_t N>
 struct Array {
   T at[N];
-  T& operator[] (Size index) {
+  T& operator[] (size_t index) {
     if (index >= N) throw std::out_of_range("Array index out of range");
     return at[index];
   }
-  const T& operator[] (Size index) const {
+  const T& operator[] (size_t index) const {
     if (index >= N) throw std::out_of_range("Array index out of range");
     return at[index];
   }
   bool empty() const { return N == 0; }
-  Size size() const { return N; }
+  size_t size() const { return N; }
   T* begin() { return &at[0]; }
   T* end() { return &at[0] + N; }
   const T* begin() const { return &at[0]; }
@@ -149,7 +149,7 @@ struct List {
   typedef iterator_type<const T> const_iterator;
   // objects of content_type can be created outside the Struct's memory block
   typedef struct {
-    Size size;
+    size_t size;
     T* value;
     List<T>* next;
   } content_type;
@@ -158,20 +158,22 @@ struct List {
   OffsetPtr<T> value;
   OffsetPtr<List<T> > next;
 
+  List() : size_(0) {}
+
   List<T>& operator= (const content_type& a) {
     size_ = a.size;
     value = a.value;
     next = a.next;
     return *this;
   }
-  T& operator[] (Size index) {
+  T& operator[] (size_t index) {
     if (index >= size_) throw std::out_of_range("List index out of range");
     if (index == 0)
       return *value;
     else
       return (*next)[index - 1];
   }
-  const T& operator[] (Size index) const {
+  const T& operator[] (size_t index) const {
     if (index >= size_) throw std::out_of_range("List index out of range");
     if (index == 0)
       return *value;
@@ -192,7 +194,7 @@ struct List {
   bool operator!= (const List<T>& o) const { return !(*this == o); }
   void clear() { size_ = 0; value = NULL; next = NULL; }
   bool empty() const { return !size_; }
-  Size size() const { return size_; }
+  size_t size() const { return size_; }
   iterator begin() { return empty() ? iterator() : iterator(this); }
   iterator end() { return iterator(); }
   const_iterator begin() const {
@@ -212,23 +214,25 @@ struct Vector {
   typedef const value_type* const_iterator;
   // objects of content_type can be created outside the Struct's memory block
   typedef struct {
-    Size size;
+    size_t size;
     T* at;
   } content_type;
 
   Size size_;
   OffsetPtr<value_type> at;
 
+  Vector() : size_(0) {}
+
   Vector<T>& operator= (const content_type& a) {
     size_ = a.size;
     at = a.at;
     return *this;
   }
-  T& operator[] (Size index) {
+  T& operator[] (size_t index) {
     if (index >= size_) throw std::out_of_range("Vector index out of range");
     return at[index];
   }
-  const T& operator[] (Size index) const {
+  const T& operator[] (size_t index) const {
     if (index >= size_) throw std::out_of_range("Vector index out of range");
     return at[index];
   }
@@ -246,7 +250,7 @@ struct Vector {
   bool operator!= (const Vector<T>& o) const { return !(*this == o); }
   void clear() { size_ = 0; at = NULL; }
   bool empty() const { return !size_; }
-  Size size() const { return size_; }
+  size_t size() const { return size_; }
   iterator begin() { return &at[0]; }
   iterator end() { return &at[0] + size_; }
   const_iterator begin() const { return &at[0]; }
@@ -305,7 +309,7 @@ struct Struct {
   char* address() const { return (char*)this; }
 
   template <class S>
-  void Init(Size capacity = sizeof(S)) {
+  void Init(size_t capacity = sizeof(S)) {
     struct_size = used_space = sizeof(S);
     this->capacity = capacity;
   }
@@ -316,9 +320,9 @@ struct Struct {
   }
 
   template <class S>
-  static S* New(Size capacity);
+  static S* New(size_t capacity = sizeof(S));
   template <class S>
-  static S* InplaceNew(void* buffer, Size capacity);
+  static S* InplaceNew(void* buffer, size_t capacity = sizeof(S));
   template <class S>
   static S* NewCopy(const S* src);
   template <class S>
@@ -335,7 +339,7 @@ struct Struct {
   template <class T>
   T* Create(size_t count = 1);
 
-  template <class T, Size N>
+  template <class T, size_t N>
   Array<T, N>* CreateArray();
 
   template <class T>
@@ -404,12 +408,12 @@ bool List<T>::resize(Struct* s, size_t new_size) {
 }
 
 template <class S>
-S* Struct::New(Size capacity) {
+S* Struct::New(size_t capacity) {
   return InplaceNew<S>(malloc(capacity), capacity);
 }
 
 template <class S>
-S* Struct::InplaceNew(void* buffer, Size capacity) {
+S* Struct::InplaceNew(void* buffer, size_t capacity) {
   S* s = new (buffer) S;
   s->template Init<S>(capacity);
   return s;
@@ -473,7 +477,7 @@ T* Struct::Create(size_t count) {
   return a;
 }
 
-template <class T, Size N>
+template <class T, size_t N>
 Array<T, N>* Struct::CreateArray() {
   Array<T, N>* a = Allocate<Array<T, N> >();
   if (a) {
