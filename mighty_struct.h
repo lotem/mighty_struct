@@ -501,15 +501,22 @@ Array<T, N>* Struct::CreateArray() {
 template <class T>
 const typename List<T>::content_type Struct::CreateList(size_t size) {
   typename List<T>::content_type x;
-  x.size = size;
+  x.size = 0;
   x.value = NULL;
   x.next = NULL;
   if (size > 0) {
     x.value = Allocate<T>();
-  }
-  if (size > 1) {
-    x.next = Allocate<List<T> >();
-    *x.next = CreateList<T>(size - 1);
+    if (!x.value)
+      return x;
+    if (size > 1) {
+      x.next = Allocate<List<T> >();
+      if (!x.next)
+        return x;
+      *x.next = CreateList<T>(size - 1);
+      if (x.next->empty())
+        return x;
+    }
+    x.size = size;
   }
   return x;
 }
@@ -517,8 +524,8 @@ const typename List<T>::content_type Struct::CreateList(size_t size) {
 template <class T>
 const typename Vector<T>::content_type Struct::CreateVector(size_t size) {
   typename Vector<T>::content_type x;
-  x.size = size;
   x.at = Allocate<T>(size);
+  x.size = x.at ? size : 0;
   return x;
 }
 

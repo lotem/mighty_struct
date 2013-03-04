@@ -98,19 +98,23 @@ void Student::Print() const {
 }
 
 void test_student() {
-  Student *s = Struct::New<Student>(512);
+  Student *s = Struct::New<Student>(200);
   s->name = s->CreateString("Fred");
   s->age = 20;
   // create a Vector
   s->courses = s->CreateVector<String>(3);
-  s->courses[0] = s->CreateString("chinese");
-  s->courses[1] = s->CreateString("english");
-  s->courses[2] = s->CreateString("math");
+  if (!s->courses.empty()) {
+    s->courses[0] = s->CreateString("chinese");
+    s->courses[1] = s->CreateString("english");
+    s->courses[2] = s->CreateString("math");
+  }
   // create a nested Struct
   s->position = s->Create<Point>();
-  s->position->x = 3;
-  s->position->y = 2;
-  s->position->z = 1;
+  if (s->position) {
+    s->position->x = 3;
+    s->position->y = 2;
+    s->position->z = 1;
+  }
   // create a Map
   s->scores = s->CreateMap<String, int>(s->courses.size());
   Vector<String>::const_iterator i = s->courses.begin();
@@ -122,11 +126,17 @@ void test_student() {
   }
   // create a linked List of Student
   s->classmates = s->CreateList<Student>(2);
-  s->classmates[0].name = s->CreateString("Li Lei");
-  s->classmates[1].name = s->CreateString("Han Meimei");
+  if (!s->classmates.empty()) {
+    s->classmates[0].name = s->CreateString("Li Lei");
+    s->classmates[1].name = s->CreateString("Han Meimei");
+  }
+  // appending a Student to the list
   Student* new_classmate = s->Create<Student>();
-  new_classmate->name = s->CreateString("Jim Green");
-  s->classmates.append(s, new_classmate);
+  // check if the class has run out of room for the new comer
+  if (new_classmate) {
+    new_classmate->name = s->CreateString("Jim Green");
+    s->classmates.append(s, new_classmate);
+  }
   // done
   cout << "# s" << endl;
   s->Print();
@@ -138,7 +148,7 @@ void test_student() {
   char buffer[1000];
   Student *r = Struct::InplaceNew<Student>(buffer, sizeof(buffer));
   r->Copy(s);
-  r->classmates.resize(r, 2);
+  r->classmates.clear();
   r->name = r->CreateString(std::string("Lonely ") + r->name.c_str());
   cout << "# r" << endl;
   r->Print();
