@@ -306,6 +306,13 @@ struct FreeSpace {
   char space[N];
 };
 
+template <class T, size_t N>
+struct Mighty : T, FreeSpace<N> {
+  Mighty() {
+    this->template Init<Mighty<T, N> >();
+  }
+};
+
 struct Struct {
   Size struct_size;
   Size capacity;

@@ -152,6 +152,11 @@ void test_student() {
   cout << "# u" << endl;
   u.Print();
 
+  Mighty<Student, 1024> v;
+  v.Copy(s);
+  cout << "# v" << endl;
+  v.Print();
+
   Struct::Delete(t);
   Struct::Delete(s);
 }
