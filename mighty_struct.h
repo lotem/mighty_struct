@@ -68,7 +68,7 @@ struct String {
   bool operator!= (const String& o) const { return !(*this == o.data); }
   operator std::string () const { return std::string(c_str()); }
   operator const char* () const { return c_str(); }
-  const char* c_str() const { return data.get(); }
+  const char* c_str() const { return data ? data.get() : ""; }
   Size length() const { return c_str() ? strlen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
   void clear() { data = NULL; }
@@ -85,7 +85,7 @@ struct WString {
   bool operator!= (const WString& o) const { return !(*this == o.data); }
   operator std::wstring () const { return std::wstring(c_str()); }
   operator const wchar_t* () const { return c_str(); }
-  const wchar_t* c_str() const { return data.get(); }
+  const wchar_t* c_str() const { return data ? data.get() : L""; }
   Size length() const { return c_str() ? wcslen(c_str()) : 0; }
   bool empty() const { return !data || !data[0]; }
   void clear() { data = NULL; }
