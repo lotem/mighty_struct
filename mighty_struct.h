@@ -319,11 +319,6 @@ struct Struct {
     this->capacity = capacity;
   }
 
-  template <class S>
-  S* Copy(const S* src) {
-    return Copy(static_cast<S*>(this), src);
-  }
-
   template <class T>
   bool HasMember(const T& member) const {
     return struct_size > (char*)&member - (char*)this;
@@ -336,9 +331,9 @@ struct Struct {
   template <class S>
   static S* NewCopy(const S* src);
   template <class S>
-  static S* Copy(S* dest, const S* src);
-  template <class S>
   static void Delete(S* ptr);
+
+  bool Copy(const Struct* src);
 
   template <class T>
   T* Allocate(size_t count = 1);
@@ -434,19 +429,18 @@ S* Struct::NewCopy(const S* src) {
   if (!src) return NULL;
   S* ret = New<S>(src->used_space);
   if (ret) {
-    Copy(ret, src);
+    ret->Copy(src);
   }
   return ret;
 }
 
-template <class S>
-S* Struct::Copy(S* dest, const S* src) {
-  if (!dest || !src || dest->capacity < src->used_space)
-    return NULL;
-  size_t original_capacity = dest->capacity;
-  std::memcpy(dest, src, src->used_space);
-  dest->capacity = original_capacity;
-  return dest;
+inline bool Struct::Copy(const Struct* src) {
+  if (!src || capacity < src->used_space)
+    return false;
+  size_t original_capacity = capacity;
+  std::memcpy(this, src, src->used_space);
+  capacity = original_capacity;
+  return true;
 }
 
 template <class S>
