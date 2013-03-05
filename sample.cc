@@ -66,8 +66,9 @@ struct Student : Struct {
 };
 
 void Student::Print() const {
-  cout << "[capacity]: " << capacity << endl;
-  cout << "[used_space]: " << used_space << endl;
+  cout << "[struct_size]: " << struct_size << endl;
+  cout << "[capacity]: " << capacity() << endl;
+  cout << "[used_space]: " << used_space() << endl;
   cout << "name: " << name.c_str() << endl;
   cout << "age: " << age << endl;
   cout << "courses: ";
@@ -98,7 +99,7 @@ void Student::Print() const {
 }
 
 void test_student() {
-  Student *s = Struct::New<Student>(200);
+  Student *s = Struct::New<Student>(300);
   s->name = s->CreateString("Fred");
   s->age = 20;
   // create a Vector
@@ -153,9 +154,9 @@ void test_student() {
   cout << "# r" << endl;
   r->Print();
 
-  struct UltraStudent : Student, FreeSpace<512> {
+  struct UltraStudent : Student, FreeSpace<500> {
     UltraStudent() {
-      Init<UltraStudent>();
+      Init<Student>(500);
     }
   } u;
   u.Copy(s);

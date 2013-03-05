@@ -4,7 +4,6 @@
 #ifndef MIGHTY_STRUCT_H_
 #define MIGHTY_STRUCT_H_
 
-#include <cstdlib>
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -12,11 +11,14 @@
 
 namespace mighty {
 
-typedef /*size_t*/uint16_t Size;
+template <bool> struct static_assert;
+template <> struct static_assert<true> {};  // only true is defined
+
+typedef /*size_t*/uint32_t Size;
 
 // Limitation: cannot point to itself
 // (zero is used to represent NULL pointer)
-template <class T = char, class Offset = /*intptr_t*/int16_t>
+template <class T = char, class Offset = /*intptr_t*/int32_t>
 class OffsetPtr {
  public:
   OffsetPtr() : offset_(0) {}
@@ -91,8 +93,6 @@ struct WString {
   void clear() { data = NULL; }
 };
 
-struct Struct;
-
 template <class T, size_t N>
 struct Array {
   T at[N];
@@ -111,6 +111,8 @@ struct Array {
   const T* begin() const { return &at[0]; }
   const T* end() const { return &at[0] + N; }
 };
+
+struct Struct;
 
 template <class T>
 struct List {
@@ -202,9 +204,9 @@ struct List {
   }
   const_iterator end() const { return const_iterator(); }
   template <class V>
-  bool append(Struct* allocator, V* v);
-  bool append(Struct* allocator, const content_type& c);
-  bool resize(Struct* allocator, size_t new_size);
+  bool append(Struct* s, V* v);
+  bool append(Struct* s, const content_type& c);
+  bool resize(Struct* s, size_t new_size);
 };
 
 template <class T>
@@ -301,34 +303,59 @@ struct Map : Vector<Pair<K, V> > {
   }
 };
 
+struct Allocator {
+  Size capacity;
+  Size used_space;
+  Allocator(size_t n) : capacity(n), used_space(sizeof(Allocator)) {}
+  template <class T>
+  T* Allocate(size_t count = 1);
+  char* address() const { return (char*)this; }
+};
+
 template <size_t N>
-struct FreeSpace {
-  char space[N];
+struct FreeSpace : Allocator {
+  char space[N - sizeof(Allocator)];
+  FreeSpace() : Allocator(N) {
+    static_assert<(N > sizeof(Allocator))>();
+  }
 };
 
 template <class T, size_t N>
-struct Mighty : T, FreeSpace<N> {
+struct Mighty : T, FreeSpace<N - sizeof(T)> {
   Mighty() {
-    this->template Init<Mighty<T, N> >();
+    static_assert<(N > sizeof(T))>();
+    this->template Init<T>(N - sizeof(T));
   }
 };
 
 struct Struct {
   Size struct_size;
-  Size capacity;
-  Size used_space;
+  OffsetPtr<Allocator> allocator;
 
   char* address() const { return (char*)this; }
 
+  size_t capacity() const {
+    return struct_size + (allocator ? allocator->capacity : 0);
+  }
+  size_t used_space() const {
+    return struct_size + (allocator ? allocator->used_space : 0);
+  }
+
   template <class S>
-  void Init(size_t capacity = sizeof(S)) {
-    struct_size = used_space = sizeof(S);
-    this->capacity = capacity;
+  void Init(size_t free_space = 0) {
+    struct_size = sizeof(S);
+    if (free_space) {
+      char* addr = address() + struct_size;
+      allocator = new (addr) Allocator(free_space);
+    }
+    else {
+      allocator = NULL;
+    }
   }
 
   template <class T>
   bool HasMember(const T& member) const {
-    return struct_size > (char*)&member - (char*)this;
+    return struct_size > (char*)&member - address();
   }
 
   template <class S>
@@ -343,7 +370,9 @@ struct Struct {
   bool Copy(const Struct* src);
 
   template <class T>
-  T* Allocate(size_t count = 1);
+  T* Allocate(size_t count = 1) {
+    return allocator ? allocator->Allocate<T>(count) : NULL;
+  }
 
   template <class T>
   T* Find(size_t offset) const;
@@ -372,7 +401,7 @@ struct Struct {
 template <class T>
 template <class V>
 bool List<T>::append(Struct* s, V* v) {
-  if (!v) return false;
+  if (!s || !v) return false;
   content_type c;
   c.size = 1;
   c.value = v;
@@ -382,6 +411,7 @@ bool List<T>::append(Struct* s, V* v) {
 
 template <class T>
 bool List<T>::append(Struct* s, const content_type& c) {
+  if (!s) return false;
   if (empty()) {
     *this = c;
     return true;
@@ -421,42 +451,43 @@ bool List<T>::resize(Struct* s, size_t new_size) {
 
 template <class S>
 S* Struct::New(size_t capacity) {
-  return InplaceNew<S>(malloc(capacity), capacity);
+  return InplaceNew<S>(new char[capacity], capacity);
 }
 
 template <class S>
 S* Struct::InplaceNew(void* buffer, size_t capacity) {
   S* s = new (buffer) S;
-  s->template Init<S>(capacity);
+  s->template Init<S>(capacity - sizeof(S));
   return s;
 }
 
 template <class S>
 S* Struct::NewCopy(const S* src) {
   if (!src) return NULL;
-  S* ret = New<S>(src->used_space);
+  S* ret = New<S>(src->used_space());
   if (ret) {
     ret->Copy(src);
   }
   return ret;
 }
 
+template <class S>
+void Struct::Delete(S* ptr) {
+  delete[] ptr;
+}
+
 inline bool Struct::Copy(const Struct* src) {
-  if (!src || capacity < src->used_space)
+  if (!src || capacity() < src->used_space())
     return false;
-  size_t original_capacity = capacity;
-  std::memcpy(this, src, src->used_space);
-  capacity = original_capacity;
+  size_t original_capacity = capacity();
+  std::memcpy(this, src, src->used_space());
+  if (allocator)
+    allocator->capacity = original_capacity - struct_size;
   return true;
 }
 
-template <class S>
-void Struct::Delete(S* ptr) {
-  free(ptr);
-}
-
 template <class T>
-T* Struct::Allocate(size_t count) {
+T* Allocator::Allocate(size_t count) {
   if (!count)
     return NULL;
   size_t available_space = capacity - used_space;
@@ -473,7 +504,7 @@ T* Struct::Allocate(size_t count) {
 
 template <class T>
 T* Struct::Find(size_t offset) const {
-  if (offset + sizeof(T) > capacity)
+  if (offset + sizeof(T) > capacity())
     return NULL;
   return reinterpret_cast<T*>(address() + offset);
 }
