@@ -88,7 +88,7 @@ void move_point(Point* p) {
 }
 ```
 
-Problem solved, but frequently you have to reference the struct's definition for versions in which members were added. That's not cool.
+Problem solved, but frequently you have to refer to the struct's definition for versions in which members were added. That's not cool.
 
 ## Solution to Problem 1
 
